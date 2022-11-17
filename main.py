@@ -6,7 +6,6 @@ Date: 11/15/2022
 from tkinter import *
 from tkinter import messagebox
 from random import choice
-from time import sleep
 
 keyboard_keys = {}
 squares_list = []
@@ -20,7 +19,6 @@ WIN_FLAG = None
 bg = "black"
 square_bg = "#3a3a3c"
 keyboard_keys_colors = "#818384"
-# keyboard_keys_colors_no = "#3a3a3c"
 key_bg = "gray"
 text_fg = "white"
 
@@ -62,6 +60,26 @@ root.config(bg=bg)
 
 
 """ FUNCTIONS """
+def restart_board():
+    """ Restarts board to the default values """
+    global WORDLE_WORD, CURRENT_SQUARE_CELL, CURRENT_SQUARE_ROW, end_of_row_flag, WIN_FLAG, keyboard_keys, squares_list, used_words, used_green_letters
+    WORDLE_WORD = choice(wordbank)
+    print(WORDLE_WORD)
+    CURRENT_SQUARE_CELL = 0
+    CURRENT_SQUARE_ROW = 0
+    end_of_row_flag = False
+    WIN_FLAG = None
+    used_words = []
+    used_green_letters = []
+
+    for key, value in keyboard_keys.items():
+        value.config(bg=keyboard_keys_colors)
+
+    for squares in squares_list:
+        for square in squares:
+            square.config(bg=square_bg, text="")
+
+
 def make_label(root, x, y, h, w, *args, **kwargs):
     """ Used this function to create labels that are measured in units of px rather than units of text """
     frame = Frame(root, height=h, width=w)
@@ -183,9 +201,14 @@ def return_line():
     update_square_boxes(word)
 
     # Player has won!
+
     global WIN_FLAG
     if WIN_FLAG:
-        messagebox.askyesno("Wordle", f"Congrats you have beaten the game! The word was {WORDLE_WORD}. Would you like to try another game? ")
+        win_messagebox = messagebox.askyesno("Wordle", f"Congrats you have beaten the game! The word was {WORDLE_WORD}. Would you like to try another game? ")
+
+        if win_messagebox:
+            restart_board()
+            return
 
     # Increments to the beginning of the next row.
     CURRENT_SQUARE_ROW += 1
