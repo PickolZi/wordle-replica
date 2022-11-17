@@ -13,6 +13,7 @@ squares_list = []
 CURRENT_SQUARE_CELL = 0
 CURRENT_SQUARE_ROW = 0
 end_of_row_flag = False
+WIN_FLAG = None
 
 
 """ COLORS """
@@ -40,6 +41,8 @@ filename = "wordbank.txt"
 
 """ Reads from word bank. Grabs a random word """
 wordbank = []
+used_words = []
+used_green_letters = []
 with open(filename, "r") as f:
     wordbank = f.readlines()
     wordbank = [word.strip() for word in wordbank]
@@ -68,7 +71,6 @@ def make_label(root, x, y, h, w, *args, **kwargs):
     label.pack(fill=BOTH, expand=1)
     return label
 
-
 def make_button(root, x, y, h, w, *args, **kwargs):
     """ Used this function to create buttons that are measured in units of px rather than units of text """
     frame = Frame(root, height=h, width=w)
@@ -78,13 +80,16 @@ def make_button(root, x, y, h, w, *args, **kwargs):
     button.pack(fill=BOTH, expand=1)
     return button
 
-
 def is_word_valid(word):
     """ Returns True if the word is in the wordbank """
+    global used_words
+    if word in used_words:
+        return False
+
     if word in wordbank:
+        used_words.append(word)
         return True
     return False
-
 
 def get_word():
     """ Returns the current row's word """
@@ -95,23 +100,49 @@ def get_word():
 
     return word
 
-
 def update_square_boxes(word):
-    """ After the enter key is clicked, change the color of the boxes to green or yellow. """
+    """ After the enter key is clicked, change the color of the boxes to green or yellow. Including the keyboard """
+    global used_green_letters, WIN_FLAG
     temp_list = list(word)
     for index, letter in enumerate(temp_list):
         if letter in WORDLE_WORD:
-            squares_list[CURRENT_SQUARE_ROW][index].config(bg="yellow")
+            squares_list[CURRENT_SQUARE_ROW][index].config(bg="#c9b458")
+
+            if letter not in used_green_letters:
+                keyboard_keys[letter].config(bg="#c9b458")
+        else:
+            keyboard_keys[letter].config(bg="#3A3A3C")
 
         if letter == WORDLE_WORD[index]:
-            squares_list[CURRENT_SQUARE_ROW][index].config(bg="green")
+            used_green_letters.append(letter)
+            squares_list[CURRENT_SQUARE_ROW][index].config(bg="#6aaa64")
+            keyboard_keys[letter].config(bg="#6aaa64")
+
+    if word == WORDLE_WORD:
+        WIN_FLAG = True
+
 
 """ Keyboard Listener Functions """
 def pressed_key(event):
+    key = event.char
+    pressed(key)
+
+def return_key(event):
+    return_line()
+
+def backspace_key(event):
+    backspace()
+
+
+def pressed(key):
     """ Whenever a valid alphabetical key is pressed, add it to the squares if there's space. """
-    global CURRENT_SQUARE_ROW, CURRENT_SQUARE_CELL
+    global CURRENT_SQUARE_ROW, CURRENT_SQUARE_CELL, WIN_FLAG
+
+    # Makes game unplayable if there's a winner.
+    if WIN_FLAG: return
+
     # Makes sure the key pressed is valid.
-    if event.char not in keyboard_keys.keys():
+    if key not in keyboard_keys.keys():
         return
 
     # Check if the current row is filled with letters.
@@ -119,7 +150,7 @@ def pressed_key(event):
         return
 
     # Writes the letter to the screen.
-    squares_list[CURRENT_SQUARE_ROW][CURRENT_SQUARE_CELL].config(text=event.char.upper(), fg=text_fg, font=text_font)
+    squares_list[CURRENT_SQUARE_ROW][CURRENT_SQUARE_CELL].config(text=key.upper(), fg=text_fg, font=text_font)
 
     # Increases counter by one
     CURRENT_SQUARE_CELL += 1
@@ -127,8 +158,7 @@ def pressed_key(event):
     global end_of_row_flag  # end_of_row_flag fixes a bug
     end_of_row_flag = False
 
-
-def return_key(event):
+def return_line():
     """
     When pressed, it attempts to submit the word
     Check: If the word is a repeat, exists, and is 5 characters.
@@ -147,11 +177,15 @@ def return_key(event):
     # Checks if the word on the current row is valid. If not, popup that the word is not valid.
     word = get_word().lower()
     if not is_word_valid(word):
-        messagebox.showinfo("Wordle", "This word is not part of our wordbank. Please chose a different word.")
+        messagebox.showinfo("Wordle", "This word is not part of our wordbank or you used this word. Please chose a different word.")
         return
 
-    # TODO: Change the square boxes to either green or yellow.
     update_square_boxes(word)
+
+    # Player has won!
+    global WIN_FLAG
+    if WIN_FLAG:
+        messagebox.askyesno("Wordle", f"Congrats you have beaten the game! The word was {WORDLE_WORD}. Would you like to try another game? ")
 
     # Increments to the beginning of the next row.
     CURRENT_SQUARE_ROW += 1
@@ -159,8 +193,7 @@ def return_key(event):
 
     end_of_row_flag = True
 
-
-def backspace_key(event):
+def backspace():
     """
     When pressed, it removes a character
     Check: If there is atleast 1 character on the screen.
@@ -205,7 +238,7 @@ key_x = 10  # x-pos of first col key
 key_y = 645  # y-pos of first row keys
 first_row_keys = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
 for i, key in enumerate(first_row_keys):
-    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
+    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font, command=lambda a=key: pressed(a))
     keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
     key_x += key_width + space
 
@@ -214,7 +247,7 @@ key_x = 35  # x-pos of second row first col key
 key_y = 730  # y-pos of second row keys
 second_row_keys = ["a", "s", "d", "f", "g", "h", "j", "k", "l"]
 for i, key in enumerate(second_row_keys):
-    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
+    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font, command=lambda a=key: pressed(a))
     keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
     key_x += key_width + space
 
@@ -226,17 +259,17 @@ for i, key in enumerate(third_row_keys):
 
     # For the last row, the left and right most keys are a bit longer than the rest of the keys.
     if i == 0:
-        key_button = make_button(root, key_x - 25, key_y, key_height, key_width + 25, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
+        key_button = make_button(root, key_x - 25, key_y, key_height, key_width + 25, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font, command=return_line)
         keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
         key_x += key_width + space
         continue
     elif i == 8:
-        key_button = make_button(root, key_x, key_y, key_height, key_width + 25, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
+        key_button = make_button(root, key_x, key_y, key_height, key_width + 25, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font, command=backspace)
         keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
         key_x += key_width + space
         continue
 
-    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
+    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font, command=lambda a=key: pressed(a))
     keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
     key_x += key_width + space
 
