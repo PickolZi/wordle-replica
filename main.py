@@ -4,6 +4,9 @@ Date: 11/15/2022
 """
 
 from tkinter import *
+from tkinter import messagebox
+from random import choice
+from time import sleep
 
 keyboard_keys = {}
 squares_list = []
@@ -14,26 +17,44 @@ end_of_row_flag = False
 
 """ COLORS """
 bg = "black"
-square_bg = "gray"
+square_bg = "#3a3a3c"
+keyboard_keys_colors = "#818384"
+# keyboard_keys_colors_no = "#3a3a3c"
 key_bg = "gray"
 text_fg = "white"
 
 
 """ SETTINGS """
 title_font = ("Comic Sans MS", 48, "bold")
-screen_width = 610
-screen_height = 900
+text_font = ("Comic Sans MS", 28, "bold")
+small_text_font = ("Comic Sans MS", 16, "bold")
+window_width = 610
+window_height = 900
 title = "Wordle"
 square_width = square_height = 75
 key_width = 50
 key_height = 75
 space = 10
+filename = "wordbank.txt"
+
+
+""" Reads from word bank. Grabs a random word """
+wordbank = []
+with open(filename, "r") as f:
+    wordbank = f.readlines()
+    wordbank = [word.strip() for word in wordbank]
+
+WORDLE_WORD = choice(wordbank)
 
 
 """ SETUP """
 root = Tk()
+screen_width = root.winfo_screenwidth()  # Grabs the user's screen width
+screen_height = root.winfo_screenheight()  # Grabs the user's screen height
+x_pos = int((screen_width / 2) - (window_width / 2))
+y_pos = int((screen_height / 2) - (window_height / 2))
+root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
 root.title("CS1010-03 Wordle")
-root.geometry(f"{screen_width}x{screen_height}")
 root.config(bg=bg)
 
 
@@ -58,6 +79,33 @@ def make_button(root, x, y, h, w, *args, **kwargs):
     return button
 
 
+def is_word_valid(word):
+    """ Returns True if the word is in the wordbank """
+    if word in wordbank:
+        return True
+    return False
+
+
+def get_word():
+    """ Returns the current row's word """
+    my_squares_list = squares_list[CURRENT_SQUARE_ROW]
+    word = ""
+    for square in my_squares_list:
+        word += square["text"]
+
+    return word
+
+
+def update_square_boxes(word):
+    """ After the enter key is clicked, change the color of the boxes to green or yellow. """
+    temp_list = list(word)
+    for index, letter in enumerate(temp_list):
+        if letter in WORDLE_WORD:
+            squares_list[CURRENT_SQUARE_ROW][index].config(bg="yellow")
+
+        if letter == WORDLE_WORD[index]:
+            squares_list[CURRENT_SQUARE_ROW][index].config(bg="green")
+
 """ Keyboard Listener Functions """
 def pressed_key(event):
     """ Whenever a valid alphabetical key is pressed, add it to the squares if there's space. """
@@ -71,7 +119,7 @@ def pressed_key(event):
         return
 
     # Writes the letter to the screen.
-    squares_list[CURRENT_SQUARE_ROW][CURRENT_SQUARE_CELL].config(text=event.char)
+    squares_list[CURRENT_SQUARE_ROW][CURRENT_SQUARE_CELL].config(text=event.char.upper(), fg=text_fg, font=text_font)
 
     # Increases counter by one
     CURRENT_SQUARE_CELL += 1
@@ -95,6 +143,15 @@ def return_key(event):
     global end_of_row_flag  # end_of_row_flag fixes a bug
     if end_of_row_flag:
         return
+
+    # Checks if the word on the current row is valid. If not, popup that the word is not valid.
+    word = get_word().lower()
+    if not is_word_valid(word):
+        messagebox.showinfo("Wordle", "This word is not part of our wordbank. Please chose a different word.")
+        return
+
+    # TODO: Change the square boxes to either green or yellow.
+    update_square_boxes(word)
 
     # Increments to the beginning of the next row.
     CURRENT_SQUARE_ROW += 1
@@ -124,8 +181,8 @@ def backspace_key(event):
 
 
 """ Title Screen """
-title_label = make_label(root, 0, 0, 75, screen_width, text=title, bg=bg, fg=text_fg, font=title_font)  # Title screen
-frame = Frame(root, height=2, width=screen_width, bg=square_bg)  # Horizontal line break
+title_label = make_label(root, 0, 0, 75, window_width, text=title, bg=bg, fg=text_fg, font=title_font)  # Title screen
+frame = Frame(root, height=2, width=window_width, bg=square_bg)  # Horizontal line break
 frame.place(x=0, y=75)
 
 """ Main Screen """
@@ -148,7 +205,7 @@ key_x = 10  # x-pos of first col key
 key_y = 645  # y-pos of first row keys
 first_row_keys = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
 for i, key in enumerate(first_row_keys):
-    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key)
+    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
     keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
     key_x += key_width + space
 
@@ -157,29 +214,29 @@ key_x = 35  # x-pos of second row first col key
 key_y = 730  # y-pos of second row keys
 second_row_keys = ["a", "s", "d", "f", "g", "h", "j", "k", "l"]
 for i, key in enumerate(second_row_keys):
-    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key)
+    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
     keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
     key_x += key_width + space
 
 # Third Row
 key_x = 35  # x-pos of second row first col key
 key_y = 815  # y-pos of second row keys
-third_row_keys = ["ENTER", "z", "x", "c", "v", "b", "n", "m", "BACKSPACE"]
+third_row_keys = ["ENTER", "z", "x", "c", "v", "b", "n", "m", "BACK"]
 for i, key in enumerate(third_row_keys):
 
     # For the last row, the left and right most keys are a bit longer than the rest of the keys.
     if i == 0:
-        key_button = make_button(root, key_x - 25, key_y, key_height, key_width + 25, text=key)
+        key_button = make_button(root, key_x - 25, key_y, key_height, key_width + 25, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
         keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
         key_x += key_width + space
         continue
     elif i == 8:
-        key_button = make_button(root, key_x, key_y, key_height, key_width + 25, text=key)
+        key_button = make_button(root, key_x, key_y, key_height, key_width + 25, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
         keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
         key_x += key_width + space
         continue
 
-    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key)
+    key_button = make_button(root, key_x, key_y, key_height, key_width, text=key.upper(), bg=keyboard_keys_colors, fg=text_fg, font=small_text_font)
     keyboard_keys[key] = key_button  # Adds button to a dictionary to use for later
     key_x += key_width + space
 
@@ -189,5 +246,6 @@ root.bind("<Return>", return_key)  # Enter key
 root.bind("<BackSpace>", backspace_key)  # Backspace key
 root.bind("<Key>", pressed_key)
 
+print(WORDLE_WORD)
 
 root.mainloop()
